@@ -1,11 +1,16 @@
 <?php
 
-$user = array(
-    "user" => "julliane",
-    "age" => 21
-);
+// Include the routing file
+require_once 'routes.php';
+
+// Get the current request URI
+$request = $_SERVER['REQUEST_URI'];
+
+// Call the router to handle the request
+Router::handle($request);
 
 
-echo json_encode($user, JSON_PRETTY_PRINT);
+
+//echo json_encode($user, JSON_PRETTY_PRINT);
 
 

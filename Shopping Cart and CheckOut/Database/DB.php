@@ -1,14 +1,15 @@
 <?php
-require '../vendor/autoload.php';
+require __DIR__ . '/../vendor/autoload.php';
 
 
 class DB
 {
-    private $servername;
+    private $hostname;
     private $username;
     private $password;
     private $dbname;
     private $port;
+    private $conn;
 
 
     public function __construct()
@@ -24,7 +25,7 @@ class DB
         $dbPort = $_ENV['DB_PORT'];
 
         // Set Values on Class
-        $this->username = $dbHost;
+        $this->hostname = $dbHost;
         $this->username = $dbUser;
         $this->password = $dbPass;
         $this->dbname = $dbName;
@@ -35,22 +36,23 @@ class DB
     public function conn()
     {
         try {
-            // Create a new PDO instance
-            $conn = new PDO("mysql:host=$this->servername;port=$this->port,dbname=$this->dbname", $this->username, $this->password);
+            // Create a new PDO instance and include dbname in the DSN
+            $this->conn = new PDO("mysql:host=$this->hostname;port=$this->port;dbname=$this->dbname", $this->username, $this->password);
 
             // Set the PDO error mode to exception
-            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+            return $this->conn;
             echo "Connected successfully";
         } catch (PDOException $e) {
             echo "Connection failed: " . $e->getMessage();
         }
 
         // Close connection
-        $conn = null;
+        $this->conn = null;
     }
 }
 
-$DataBase = new DB();
+// $DataBase = new DB();
 
-$DataBase->conn();
+// $DataBase->conn();
