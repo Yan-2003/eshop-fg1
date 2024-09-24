@@ -1,7 +1,7 @@
 <?php
 
 // Include the routing file
-require_once 'routes.php';
+require_once 'Routes/routes.php';
 
 // Get the current request URI
 $request = $_SERVER['REQUEST_URI'];
