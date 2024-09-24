@@ -14,9 +14,7 @@
 ```
 
 <br>
-3. Add .ENV file to the Directory of :
-
-**` eshop-fg1\Shopping Cart and CheckOut\.ENV `**
+3. Add .ENV file to the Directory of : **` eshop-fg1\Shopping Cart and CheckOut\.ENV `**
 
 Structure Code: 
 
