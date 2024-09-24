@@ -9,6 +9,7 @@ class DB
     private $password;
     private $dbname;
     private $port;
+    public $conn;
 
 
     public function __construct()
@@ -36,21 +37,41 @@ class DB
     {
         try {
             // Create a new PDO instance
-            $conn = new PDO("mysql:host=$this->servername;port=$this->port,dbname=$this->dbname", $this->username, $this->password);
+            $this->conn = new PDO("mysql:host=$this->servername;port=$this->port;dbname=$this->dbname", $this->username, $this->password);
 
             // Set the PDO error mode to exception
-            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            echo "Connected successfully";
         } catch (PDOException $e) {
             echo "Connection failed: " . $e->getMessage();
         }
+    }
 
-        // Close connection
-        $conn = null;
+    // Function to create a query statement
+    public function query($query){
+
+        try {
+            $statement = $this->conn->query($query);
+    
+            $results = $statement->fetchAll(PDO::FETCH_ASSOC);
+            return $results;
+        } catch (PDOException $e) {
+            echo "\nQuery failed: " . $e->getMessage();
+        }
+    }
+
+    // Function to close the connection
+    public function close(){
+        echo "Closed successfully";
+        return $this->conn = null;
     }
 }
 
-$DataBase = new DB();
+/* $DB = new DB();
+$DB->conn(); */
+/*
+// testing code 
 
-$DataBase->conn();
+
+
+echo json_encode($DB->query("SELECT * FROM users"), JSON_PRETTY_PRINT); */
