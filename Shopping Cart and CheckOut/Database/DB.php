@@ -49,7 +49,7 @@ class DB
         }
 
         // Close connection
-        $this->$conn = null;
+        $this->conn = null;
     }
 }
 
