@@ -14,8 +14,12 @@
 ```
 
 <br>
-3. Add .ENV file to the Directory of : ``* eshop-fg1\Shopping Cart and CheckOut\.ENV *`` 
+3. Add .ENV file to the Directory of : 
+
+``* eshop-fg1\Shopping Cart and CheckOut\.ENV *`` 
+
 Structure Code: 
+
 ```dotenv
    DB_HOST= #host of the database
    DB_NAME= # name of the database
