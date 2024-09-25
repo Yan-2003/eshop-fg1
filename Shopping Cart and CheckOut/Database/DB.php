@@ -9,8 +9,7 @@ class DB
     private $password;
     private $dbname;
     private $port;
-    private $conn;
-
+    public $conn;
 
     public function __construct()
     {
@@ -41,18 +40,32 @@ class DB
 
             // Set the PDO error mode to exception
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            return $this->conn;
+          
             echo "Connected successfully";
+            return $this->conn;
+            
         } catch (PDOException $e) {
             echo "Connection failed: " . $e->getMessage();
         }
+    }
 
-        // Close connection
-        $this->conn = null;
+    // Function to create a query statement
+    public function query($query){
+      
+      try {
+            $statement = $this->conn->query($query);
+    
+            $results = $statement->fetchAll(PDO::FETCH_ASSOC);
+            return $results;
+        } catch (PDOException $e) {
+            echo "\nQuery failed: " . $e->getMessage();
+        }
+     }
+
+    // Function to close the connection
+    public function close(){
+        echo "Closed successfully";
+        return $this->conn = null;
     }
 }
 
-// $DataBase = new DB();
-
-// $DataBase->conn();
