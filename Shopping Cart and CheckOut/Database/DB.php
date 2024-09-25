@@ -1,5 +1,9 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
+namespace Database;
+
+use Dotenv\Dotenv;
+use PDO;
+use PDOException;
 
 
 class DB
@@ -13,7 +17,7 @@ class DB
 
     public function __construct()
     {
-        $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__));
+        $dotenv = Dotenv::createImmutable(dirname(__DIR__));
         $dotenv->load();
 
         // Access the Database Credintials to the ENV File

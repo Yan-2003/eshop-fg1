@@ -1,5 +1,7 @@
 <?php
 
+namespace HTTP;
+
 class Router
 {
     private static $routes = [];
@@ -23,15 +25,21 @@ class Router
             // Include the controller file
             require_once "Controller/$controllerName.php";
 
-            // Instantiate the controller and call the action
+            // Instantiate the controller
             $controller = new $controllerName();
-            call_user_func([$controller, $actionName]);
+
+            // Check if any parameters are passed via GET or POST
+            $params = array_merge($_GET, $_POST); // Combine both GET and POST parameters
+
+            // Call the controller action with parameters
+            if (!empty($params)) {
+                call_user_func_array([$controller, $actionName], $params);
+            } else {
+                call_user_func([$controller, $actionName]);
+            }
         } else {
             http_response_code(404);
             echo "404 - Page Not Found";
         }
     }
 }
-
-//Different routes
-Router::add('/users/show', 'UserController', 'showUser');

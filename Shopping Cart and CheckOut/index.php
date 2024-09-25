@@ -1,7 +1,11 @@
 <?php
+require_once './vendor/autoload.php';
+require_once './Database/DB.php';
+require_once './Router/routes.php';
+require_once './API/api.php';
+use HTTP\Router;
 
 // Include the routing file
-require_once 'Routes/routes.php';
 
 // Get the current request URI
 $request = $_SERVER['REQUEST_URI'];
@@ -9,8 +13,5 @@ $request = $_SERVER['REQUEST_URI'];
 // Call the router to handle the request
 Router::handle($request);
 
-
-
-//echo json_encode($user, JSON_PRETTY_PRINT);
 
 
