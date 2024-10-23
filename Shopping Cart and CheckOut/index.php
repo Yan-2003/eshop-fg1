@@ -4,6 +4,9 @@ require_once './Database/DB.php';
 require_once './Router/routes.php';
 require_once './api.php';
 require_once './Middleware/Auth.php';
+
+//Cyrel works
+require_once './Models/Cart.php';
 use HTTP\Router;
 
 // Include the routing file
