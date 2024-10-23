@@ -1,5 +1,7 @@
 <?php
 
+namespace Middleware;
+
 use Database\DB;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
