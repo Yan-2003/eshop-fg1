@@ -1,10 +1,7 @@
 <?php
 
 use Middleware\auth;
-
-require_once 'Models/User.php';
-
-
+use Models\User;
 
 class UserController
 {
@@ -12,7 +9,6 @@ class UserController
     {
         $auth = new auth();
         
-
         if($auth->check()){
             $allUsers = new User();
     
