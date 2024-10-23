@@ -2,7 +2,7 @@
 require_once './vendor/autoload.php';
 require_once './Database/DB.php';
 require_once './Router/routes.php';
-require_once './API/api.php';
+require_once './api.php';
 require_once './Middleware/Auth.php';
 use HTTP\Router;
 
