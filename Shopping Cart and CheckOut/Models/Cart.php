@@ -38,7 +38,7 @@ class Cart
         
         //bind all the parameters user_id and product_id into the query statement
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
+        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT); 
 
         //execute the query
         $stmt->execute();
@@ -48,7 +48,7 @@ class Cart
             $stmt = $this->db->prepare('UPDATE cart SET quantity = quantity + :quantity WHERE user_id = :user_id AND product_id = :product_id');
             $stmt->bindParam(':quantity', $quantity, PDO::PARAM_INT);
             $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-            $stmt->bindParam(':product_id', $item_id, PDO::PARAM_INT);
+            $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
             return $stmt->execute();
         } else {
             // If the item doesn't exist, insert it into the cart
@@ -56,6 +56,28 @@ class Cart
             $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
             $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
             $stmt->bindParam(':quantity', $quantity, PDO::PARAM_INT);
+            return $stmt->execute();
+        }
+    }
+
+    public function updateItemQuantity($user_id, $product_id, $quantity)
+    {
+        //check the product id if it is already exist in cart
+        $stmt = $this->db->prepare('SELECT * FROM cart WHERE user_id = :user_id AND product_id = :product_id');
+        
+        //bind all the parameters user_id and product_id into the query statement
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT); 
+
+        //execute the query
+        $stmt->execute();
+
+        // If the item exists, update the quantity
+        if ($stmt->rowCount() > 0) {
+            $stmt = $this->db->prepare('UPDATE cart SET quantity = :quantity WHERE user_id = :user_id AND product_id = :product_id');
+            $stmt->bindParam(':quantity', $quantity, PDO::PARAM_INT);
+            $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+            $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
             return $stmt->execute();
         }
     }

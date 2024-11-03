@@ -9,6 +9,9 @@ class Router
     // Method to define a route
     public static function add($route, $controller, $action)
     {
+        // Convert route into a regular expression, replacing {param} with a regex group
+        $route = preg_replace('/\{(\w+)\}/', '(?P<$1>[^/]+)', $route);
+        $route = '/^' . str_replace('/', '\/', $route) . '$/';
         self::$routes[$route] = ['controller' => $controller, 'action' => $action];
     }
 
@@ -18,28 +21,29 @@ class Router
         // Remove query strings from the request URI
         $request = strtok($request, '?');
 
-        if (array_key_exists($request, self::$routes)) {
-            $controllerName = self::$routes[$request]['controller'];
-            $actionName = self::$routes[$request]['action'];
+        foreach (self::$routes as $routePattern => $route) {
+            // Check if the request URI matches the route pattern
+            if (preg_match($routePattern, $request, $matches)) {
+                $controllerName = $route['controller'];
+                $actionName = $route['action'];
 
-            // Include the controller file
-            require_once "Controller/$controllerName.php";
+                // Include the controller file
+                require_once "Controller/$controllerName.php";
 
-            // Instantiate the controller
-            $controller = new $controllerName();
+                // Instantiate the controller
+                $controller = new $controllerName();
 
-            // Check if any parameters are passed via GET or POST
-            $params = array_merge($_GET, $_POST); // Combine both GET and POST parameters
+                // Extract named parameters from the matches
+                $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
 
-            // Call the controller action with parameters
-            if (!empty($params)) {
+                // Call the controller action with parameters
                 call_user_func_array([$controller, $actionName], $params);
-            } else {
-                call_user_func([$controller, $actionName]);
+                return;
             }
-        } else {
-            http_response_code(404);
-            echo "404 - Page Not Found";
         }
+
+        // If no route matches, return a 404 response
+        http_response_code(404);
+        echo "404 - Page Not Found";
     }
 }
