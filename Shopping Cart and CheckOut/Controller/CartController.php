@@ -49,9 +49,9 @@ class CartController
             $Cart = new Cart();
 
             // Add item to the cart
-            if ($Cart->addItemCart($user_id, $product_id, $quantity)) {
+            if ($itemsCart = $Cart->addItemCart($user_id, $product_id, $quantity)) {
                 http_response_code(200);
-                echo json_encode(['message' => 'Item added to cart successfully'], JSON_PRETTY_PRINT);
+                echo json_encode(['message' => 'Item added to cart successfully', 'item added' => $itemsCart], JSON_PRETTY_PRINT);
             } else {
                 http_response_code(500);
                 echo json_encode(['message' => 'Failed to add item to cart'], JSON_PRETTY_PRINT);
@@ -85,12 +85,67 @@ class CartController
             $Cart = new Cart();
 
             // update the item queantity
-            if ($Cart->updateItemQuantity($user_id, $product_id, $quantity)) {
+            if ($itemsCart = $Cart->updateItemQuantity($user_id, $product_id, $quantity)) {
                 http_response_code(200);
-                echo json_encode(['message' => 'Quantity updated successfully'], JSON_PRETTY_PRINT);
+                echo json_encode(['message' => 'Quantity updated successfully', 'item' => $itemsCart], JSON_PRETTY_PRINT);
+            } else {
+                http_response_code(404);
+                echo json_encode(['message' => 'Product id = ' . $product_id . ' not exists'], JSON_PRETTY_PRINT);
+            }
+        } else {
+            // If user is not authorized, return a 401 Unauthorized response
+            http_response_code(401);
+            echo json_encode(['message' => 'Unauthorized user'], JSON_PRETTY_PRINT);
+        }
+    }
+
+    //delete item in cart
+    public function deleteItemInCart($product_id)
+    {
+        $auth = new auth();
+
+        if ($auth->check()) {
+            $user_id = $_SESSION['user_id'];
+
+            // Validate input
+            if (!is_numeric($product_id)) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Invalid ID'], JSON_PRETTY_PRINT);
+                return;
+            }
+
+            $Cart = new Cart();
+
+            if ($Cart->deleteItemInCart($user_id, $product_id)) {
+                http_response_code(200);
+                echo json_encode(['message' => 'Item deleted successfully in cart'], JSON_PRETTY_PRINT);
             } else {
                 http_response_code(500);
-                echo json_encode(['message' => 'Product id = ' . $product_id . ' not exists'], JSON_PRETTY_PRINT);
+                echo json_encode(['message' => 'Failed to delete the Item in Cart'], JSON_PRETTY_PRINT);
+            }
+        } else {
+            // If user is not authorized, return a 401 Unauthorized response
+            http_response_code(401);
+            echo json_encode(['message' => 'Unauthorized user'], JSON_PRETTY_PRINT);
+        }
+    }
+
+    //remove all item in cart
+    public function removeAllItemInCart()
+    {
+        $auth = new auth();
+
+        if ($auth->check()) {
+            $user_id = $_SESSION['user_id'];
+
+            $Cart = new Cart();
+
+            if ($Cart->removeAllItemInCart($user_id)) {
+                http_response_code(200);
+                echo json_encode(['message' => 'Successfully removed all the Items in Cart'], JSON_PRETTY_PRINT);
+            } else {
+                http_response_code(500);
+                echo json_encode(['message' => 'Failed to remove all the Items in Cart'], JSON_PRETTY_PRINT);
             }
         } else {
             // If user is not authorized, return a 401 Unauthorized response

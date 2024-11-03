@@ -35,10 +35,10 @@ class Cart
 
         //check the product id if it is already exist in cart
         $stmt = $this->db->prepare('SELECT * FROM cart WHERE user_id = :user_id AND product_id = :product_id');
-        
+
         //bind all the parameters user_id and product_id into the query statement
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT); 
+        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
 
         //execute the query
         $stmt->execute();
@@ -49,14 +49,27 @@ class Cart
             $stmt->bindParam(':quantity', $quantity, PDO::PARAM_INT);
             $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
             $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
-            return $stmt->execute();
+            if ($stmt->execute()) {
+                return [
+                    'product_id' => $product_id,
+                    'quantity' => $quantity,
+                    'added_at' => date('Y-m-d H:i:s') // Return the current timestamp
+                ];
+            }
         } else {
             // If the item doesn't exist, insert it into the cart
             $stmt = $this->db->prepare('INSERT INTO cart (user_id, product_id, quantity) VALUES (:user_id, :product_id, :quantity)');
             $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
             $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
             $stmt->bindParam(':quantity', $quantity, PDO::PARAM_INT);
-            return $stmt->execute();
+
+            if ($stmt->execute()) {
+                return [
+                    'product_id' => $product_id,
+                    'quantity' => $quantity,
+                    'added_at' => date('Y-m-d H:i:s') // Return the current timestamp
+                ];
+            }
         }
     }
 
@@ -64,10 +77,10 @@ class Cart
     {
         //check the product id if it is already exist in cart
         $stmt = $this->db->prepare('SELECT * FROM cart WHERE user_id = :user_id AND product_id = :product_id');
-        
+
         //bind all the parameters user_id and product_id into the query statement
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT); 
+        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
 
         //execute the query
         $stmt->execute();
@@ -78,6 +91,53 @@ class Cart
             $stmt->bindParam(':quantity', $quantity, PDO::PARAM_INT);
             $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
             $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
+            
+            if ($stmt->execute()) {
+                return [
+                    'product_id' => $product_id,
+                    'updated quantity' => $quantity,
+                    'added_at' => date('Y-m-d H:i:s') // Return the current timestamp
+                ];
+            }
+        }
+    }
+
+    public function deleteItemInCart($user_id, $product_id)
+    {
+        //check the product id if it is already exist in cart
+        $stmt = $this->db->prepare('SELECT * FROM cart WHERE user_id = :user_id AND product_id = :product_id');
+
+        //bind all the parameters user_id and product_id into the query statement
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
+
+        //execute the query
+        $stmt->execute();
+
+        // If the item exists, delete the item
+        if ($stmt->rowCount() > 0) {
+            $stmt = $this->db->prepare('DELETE FROM cart WHERE user_id = :user_id AND product_id = :product_id');
+            $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+            $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
+            return $stmt->execute();
+        }
+    }
+
+    public function removeAllItemInCart($user_id)
+    {
+        //check the product id if it is already exist in cart
+        $stmt = $this->db->prepare('SELECT * FROM cart WHERE user_id = :user_id');
+
+        //bind all the parameters user_id
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+
+        //execute the query
+        $stmt->execute();
+
+        // If the item exists, remove all items
+        if ($stmt->rowCount() > 0) {
+            $stmt = $this->db->prepare('DELETE FROM cart WHERE user_id = :user_id');
+            $stmt->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
             return $stmt->execute();
         }
     }
