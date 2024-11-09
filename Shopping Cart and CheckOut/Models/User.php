@@ -1,7 +1,7 @@
 <?php
-
+namespace Models;
 use Database\DB;
-
+use PDO;
 class User
 {
     private $db;

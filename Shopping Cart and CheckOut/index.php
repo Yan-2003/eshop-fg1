@@ -5,10 +5,11 @@ require_once './Router/routes.php';
 require_once './api.php';
 require_once './Middleware/Auth.php';
 
-//Cyrel works
-foreach (glob(__DIR__ . '/Models/*php') as $filename){
+
+foreach (glob(__DIR__ . '/Models/*php') as $filename) {
     require_once $filename;
 }
+
 
 use HTTP\Router;
 
@@ -19,6 +20,3 @@ $request = $_SERVER['REQUEST_URI'];
 
 // Call the router to handle the request
 Router::handle($request);
-
-
-
