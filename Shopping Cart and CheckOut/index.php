@@ -6,7 +6,7 @@ require_once './api.php';
 require_once './Middleware/Auth.php';
 
 
-foreach (glob(__DIR__ . '/Models/*php') as $filename) {
+foreach (glob(__DIR__ . '/Models/*php') as $filename){
     require_once $filename;
 }
 
@@ -20,3 +20,6 @@ $request = $_SERVER['REQUEST_URI'];
 
 // Call the router to handle the request
 Router::handle($request);
+
+
+
