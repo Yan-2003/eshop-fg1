@@ -6,7 +6,10 @@ require_once './api.php';
 require_once './Middleware/Auth.php';
 
 //Cyrel works
-require_once './Models/Cart.php';
+foreach (glob(__DIR__ . '/Models/*php') as $filename){
+    require_once $filename;
+}
+
 use HTTP\Router;
 
 // Include the routing file
