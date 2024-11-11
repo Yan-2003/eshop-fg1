@@ -1,10 +1,10 @@
 <?php
+
 namespace Database;
 
 use Dotenv\Dotenv;
 use PDO;
 use PDOException;
-
 
 class DB
 {
@@ -45,29 +45,29 @@ class DB
             // Set the PDO error mode to exception
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             return $this->conn;
-            
         } catch (PDOException $e) {
             echo "Connection failed: " . $e->getMessage();
         }
     }
 
     // Function to create a query statement
-    public function query($query){
-      
-      try {
+    public function query($query)
+    {
+
+        try {
             $statement = $this->conn->query($query);
-    
+
             $results = $statement->fetchAll(PDO::FETCH_ASSOC);
             return $results;
         } catch (PDOException $e) {
             echo "\nQuery failed: " . $e->getMessage();
         }
-     }
+    }
 
     // Function to close the connection
-    public function close(){
+    public function close()
+    {
         echo "Closed successfully";
         return $this->conn = null;
     }
 }
-
