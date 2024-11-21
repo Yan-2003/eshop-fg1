@@ -13,11 +13,12 @@ class TokenController{
     public $token;
 
 
-    public function getToken($email, $password){
+    public function getToken(){
 
+        $data = json_decode(file_get_contents("php://input"), true);
 
-        $this->email = $email;
-        $this->password = $password;
+        $this->email = $data['email'] ?? null;
+        $this->password = $data['password'] ?? null;
 
 
         $DB = new DB();
@@ -26,7 +27,7 @@ class TokenController{
         $result = $DB->query("SELECT user_id, email, password FROM users WHERE email='$this->email'");
 
         if($result){
-            if($result[0]['password'] == $password ){
+            if($result[0]['password'] == $this->password ){
 
                 $payload = array(
                     "user_id" => $result[0]['user_id'], 
