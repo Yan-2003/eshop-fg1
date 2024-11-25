@@ -8,6 +8,7 @@ class CheckoutController{
     public $cart_id;
     public $address_id;
     public $total_amount;
+    public $checkout;
 
     public function checkout_initiate(){
 
@@ -15,10 +16,10 @@ class CheckoutController{
 
         $data = json_decode(file_get_contents("php://input"), true);
     
-        $this->cart_id = $data['cart_id'] ?? null;
+        $this->checkout = $data['checkout'] ?? null;
 
 
-        return $checkout->initiate($this->cart_id);
+        return $checkout->initiate($this->checkout);
 
     }   
 

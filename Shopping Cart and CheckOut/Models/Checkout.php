@@ -3,11 +3,12 @@ namespace Models;
 use Database\DB;
 use Middleware\auth;
 use PDO;
-use PDOException;
+use Ramsey\Uuid\Uuid;
 
 class Checkout{
 
     private $db;
+    public $address_id;
 
     public function __construct()
     {   
@@ -16,80 +17,79 @@ class Checkout{
 
     }
 
-    public function initiate($cart_id){
+    public function initiate($checkout){
 
         $auth = new auth();
 
         if($auth->check()) { 
             $user_id = $_SESSION['user_id'];
-    
-            try {
-                $stm = $this->db->prepare("
-                    SELECT 
-                        cart.user_id, 
-                        cart.cart_id, 
-                        shipping_address.address_id, 
-                        cart.quantity, 
-                        products.price, 
-                        products.product_name  
-                    FROM 
-                        cart
-                    INNER JOIN 
-                        shipping_address ON cart.user_id = shipping_address.user_id
-                    INNER JOIN 
-                        products ON products.product_id = cart.product_id
-                    WHERE 
-                        cart.cart_id = :cart_id 
-                        AND cart.user_id = :user_id
-                ");
-                $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR);
-                $stm->bindParam(':cart_id', $cart_id, PDO::PARAM_STR);
+            $order_id = Uuid::uuid1();
+
+            $total_amount = 0;
+            $items = [];
+            foreach($checkout as $item){
+                $stm = $this->db->prepare('SELECT * FROM cart, products, shipping_address WHERE cart.status = "Pending" AND shipping_address.user_id = :user_id AND cart.product_id = products.product_id AND cart.product_id = :product_id AND cart.user_id = :user_id');
+                $stm->bindParam(":product_id", $item['product_id'], PDO::PARAM_STR_CHAR);
+                $stm->bindParam(":user_id", $user_id, PDO::PARAM_STR_CHAR);
                 $stm->execute();
                 $result = $stm->fetchAll(PDO::FETCH_ASSOC);
-    
-                $address_id = $result[0]['address_id'];
-                $total_amount = $result[0]['quantity'] * $result[0]['price'];
-    
-                $insert_data = $this->db->prepare("INSERT INTO orders(user_id , cart_id, address_id, total_amount , order_status) VALUES(:user_id, :cart_id ,:address_id , :total_amount , 'Pending')");
-                $insert_data->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-                $insert_data->bindParam(':cart_id', $cart_id , PDO::PARAM_STR_CHAR);
-                $insert_data->bindParam(':address_id', $address_id, PDO::PARAM_STR_CHAR);
-                $insert_data->bindParam(':total_amount', $total_amount, PDO::PARAM_STR);
-                if(!$insert_data->execute()){
-                    http_response_code(500);
+
+                if(count($result) != 0){
+                    $set_product_to_seleced = $this->db->prepare('UPDATE cart SET status="Selected" WHERE cart_id = :cart_id');
+                    $set_product_to_seleced->bindParam(':cart_id', $result[0]['cart_id'], PDO::PARAM_STR_CHAR);
+                    $set_product_to_seleced->execute();
+
+                    $total_amount += $result[0]['price'] * $result[0]['quantity']; 
+                    $this->address_id = $result[0]['address_id']; 
+
+                    $item = array(
+                        "product_id" => $result[0]['product_id'],
+                        "product_name" => $result[0]['product_name'],
+                        "quantity" => $result[0]['quantity']
+                    );
+
+                    $items[] = $item;
+
+                }else {
+                    echo json_encode(["message" => "No ID product Found in Cart"], JSON_PRETTY_PRINT);
                     return;
                 }
-    
-                $order = $this->db->prepare("SELECT order_id FROM orders WHERE user_id=:user_id AND cart_id=:cart_id AND address_id=:address_id");
-                $order->bindParam(':cart_id', $cart_id , PDO::PARAM_STR_CHAR);
-                $order->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-                $order->bindParam(':address_id', $address_id, PDO::PARAM_STR_CHAR);
+
+                
+            }
+
+            $INSERT_ORDER = $this->db->prepare('INSERT INTO orders(order_id, user_id, address_id , total_amount) VALUES(:order_id, :user_id, :address_id, :total_amount )');
+            $INSERT_ORDER->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+            $INSERT_ORDER->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+            $INSERT_ORDER->bindParam(':address_id', $this->address_id, PDO::PARAM_STR_CHAR);
+            $INSERT_ORDER->bindParam(':total_amount', $total_amount, PDO::PARAM_STR);
+
+            if($INSERT_ORDER->execute()){
+
+                $order = $this->db->prepare('SELECT * FROM orders, shipping_address WHERE shipping_address.user_id = :user_id AND orders.order_id = :order_id AND orders.user_id = :user_id ');
+                $order->bindParam(':order_id', $order_id , PDO::PARAM_STR_CHAR);
+                $order->bindParam(':user_id', $user_id , PDO::PARAM_STR_CHAR);
                 
                 if($order->execute()){
 
-                    $order = $order->fetchAll(PDO::FETCH_ASSOC);
-                    
-                    $resuponse =  array(    
-                        "Order ID" => $order[0]['order_id'],
-                        "Order Summary" => [
-                            "Product Name" => $result[0]['product_name'],
-                            "Price" => $result[0]['price'],
-                            "Quantiy"=> $result[0]['quantity'],
-                            "Total Price" => ($result[0]['price'] * $result[0]['quantity']),
-                            "Paying Method" => [
-                                "PayPal",
-                                "Credit Card"
-                            ]
-                        ],
-                    );
-        
-                    echo json_encode($resuponse, JSON_PRETTY_PRINT);
-                    return;
-                }
+                    $getOrder = $order->fetchAll(PDO::FETCH_ASSOC);
 
-            } catch (PDOException $e) {
-                echo "Error: " . $e->getMessage();
+
+                    $order_summary = array(
+                        "order_summary" => [
+                            "order_details" => $getOrder,
+                            "items" => $items,
+                        ],
+                        "payment_method" => [
+                            "PayPal",
+                            "Credit Card"
+                        ]
+                    );
+
+                    echo json_encode($order_summary, JSON_PRETTY_PRINT);
+                }
             }
+            
 
         }else{
             http_response_code(401);
@@ -102,7 +102,22 @@ class Checkout{
 
         $auth = new auth();
 
-        if($auth->check()) {             
+        if($auth->check()) {      
+            
+            $user_id = $_SESSION['user_id'];
+
+            $check_order_id = $this->db->prepare('SELECT * FROM orders WHERE user_id = :user_id AND order_id = :order_id');
+            $check_order_id->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+            $check_order_id->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+            if($check_order_id->execute()){
+                $check_order = $check_order_id->fetchAll(PDO::FETCH_ASSOC);
+                if(count($check_order) == 0){
+                    echo json_encode(["message" => "No order found"], JSON_PRETTY_PRINT);
+                    return;
+                }
+            }
+
+            
            
             $encryption_key = "F39YrhaEQ_DIm5gm8Slfnd2TjGDGweG_"; 
             $encryption_iv = random_bytes(openssl_cipher_iv_length('aes-256-cbc'));
@@ -148,66 +163,38 @@ class Checkout{
         if($auth->check()) {  
             $user_id = $_SESSION['user_id'];
 
-            $db = (new DB())->conn();
+            $getOrderDetails = $this->db->prepare('SELECT * FROM orders as o, payment as pt, shipping_address as sa WHERE pt.order_id = :order_id AND sa.user_id = :user_id AND o.user_id = :user_id AND o.order_id = :order_id');
+            $getOrderDetails->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+            $getOrderDetails->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+            if($getOrderDetails->execute()){
+                $result = $getOrderDetails->fetchAll(PDO::FETCH_ASSOC);
+                if(count($result) !=0){
+
+                    $getItems = $this->db->prepare('SELECT p.product_name, p.price, c.quantity, c.status FROM products as p , cart as c WHERE c.status = "Selected" AND c.product_id = p.product_id AND c.user_id = :user_id');
+                    $getItems->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+
+                    if($getItems->execute()){
+                        $item = $getItems->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        $review = array(
+                            "order_details" => $result,
+                            "items" => $item,
+                        );       
 
 
-            $stmt = $db->prepare("
+                        echo json_encode($review , JSON_PRETTY_PRINT);
 
-                    SELECT 
-                        o.order_id, o.user_id, o.order_date, o.cart_id, o.address_id, o.total_amount, o.order_status,
-                        sa.street_address, sa.city, sa.state, sa.postal_code, sa.country,
-                        p.payment_id, p.payment_date, p.payment_method, p.payment_status, p.encrypted_payment_details,
-                        pr.product_id, pr.product_name, pr.description, pr.price, pr.category_id, pr.image_url,
-                        c.quantity, c.added_at
-                    FROM 
-                        orders o
-                    JOIN 
-                        shipping_address sa ON o.address_id = sa.address_id
-                    JOIN 
-                        payment p ON p.order_id = o.order_id
-                    JOIN 
-                        cart c ON c.cart_id = o.cart_id
-                    JOIN 
-                        products pr ON pr.product_id = c.product_id
-                    WHERE 
-                        o.order_id = ? 
-                        AND o.user_id = ?
+                    }
 
-                                ");
-            $stmt->execute([$order_id, $user_id]);
-            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            if($result != null){
-                $review_order = array(
-                    "order_id" => $order_id,
-                    "user_id" => $user_id,
-                    "item" => [
-                        "product_id" => $result[0]['product_id'],
-                        "product_name" => $result[0]['product_name'],
-                        "price" => $result[0]['price'],
-                        "quantity" => $result[0]['quantity'],
-                        "total" => $result[0]['total_amount'],
-                    ],
-                    "shipping_address" => [
-                        "street_address" => $result[0]['street_address'],
-                        "city" => $result[0]['city'],
-                        "state" => $result[0]['state'],
-                        "postal_code" => $result[0]['postal_code'],
-                        "country" => $result[0]['country']
-                    ],
-                    "payment_method" => [
-                        "type" => $result[0]['payment_method'],
-                    ]
-                );
-                echo json_encode($review_order , JSON_PRETTY_PRINT);
-                return ;
-            }else{
-                http_response_code(403);
-                echo json_encode(array(
-                    "Message" => "no data found."
-                ), JSON_PRETTY_PRINT);
-                return ;
+
+                }else{
+                    echo json_encode(["message" => "No data found."], JSON_PRETTY_PRINT);
+                    return ;
+                }
             }
+
+
 
         }else{
             http_response_code(401);
@@ -232,34 +219,29 @@ class Checkout{
             if($stm->execute()){
 
 
-                $stm = $this->db->prepare('SELECT * FROM orders, cart, products, payment WHERE products.product_id = cart.product_id AND  payment.order_id = :order_id AND orders.user_id=:user_id AND orders.order_id =:order_id AND cart.user_id = :user_id' );
-                $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-                $stm->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
-
-                if($stm->execute()){
-                    $order = $stm->fetchAll(PDO::FETCH_ASSOC);
-                    $result = array(
-                        "Order_details" => [
-                            "order_id" => $order[0]['order_id'],
-                            "cart_id" => $order[0]['cart_id'],
-                            "order_status" => $order[0]['order_status'],
-                            "item" => [
-                                "product_name" => $order[0]['product_name'],
-                                "price" => $order[0]['price'],
-                                "quantity" => $order[0]['quantity'],
-                            ],
-                            "total_amount" => $order[0]['total_amount'],
-                            "order_date" => $order[0]['order_date'],   
-                            "payment" => [
-                                "type" => $order[0]['payment_method'],
-                                "payment_date" => $order[0]['payment_date']
-                            ] 
-                        ],
-                        "Message" => "You're order has been Processed.",
-                    );
-                    echo json_encode($result, JSON_PRETTY_PRINT);
-                }else{
-                    http_response_code(500);
+                $getOrderDetails = $this->db->prepare('SELECT * FROM orders as o, payment as pt, shipping_address as sa WHERE pt.order_id = :order_id AND sa.user_id = :user_id AND o.user_id = :user_id AND o.order_id = :order_id');
+                $getOrderDetails->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+                $getOrderDetails->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+                if($getOrderDetails->execute()){
+                    $result = $getOrderDetails->fetchAll(PDO::FETCH_ASSOC);
+                    if(count($result) !=0){
+    
+                        $getItems = $this->db->prepare('SELECT p.product_name, p.price, c.quantity, c.status FROM products as p , cart as c WHERE c.status = "Selected" AND c.product_id = p.product_id AND c.user_id = :user_id');
+                        $getItems->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+    
+                        if($getItems->execute()){
+                            $item = $getItems->fetchAll(PDO::FETCH_ASSOC);
+                            
+                            $review = array(
+                                "order_details" => $result,
+                                "items" => $item,
+                                "Message"=> "You're order has been Processed."
+                            );       
+    
+                            echo json_encode($review , JSON_PRETTY_PRINT);
+    
+                        }
+                    }
                 }
 
             }
@@ -286,36 +268,31 @@ class Checkout{
 
             if($stm->execute()){
 
-
-                $stm = $this->db->prepare('SELECT * FROM orders, cart, products, payment WHERE products.product_id = cart.product_id AND  payment.order_id = :order_id AND orders.user_id=:user_id AND orders.order_id =:order_id AND cart.user_id = :user_id' );
-                $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-                $stm->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
-
-                if($stm->execute()){
-                    $order = $stm->fetchAll(PDO::FETCH_ASSOC);
-                    $result = array(
-                        "Order_details" => [
-                            "order_id" => $order[0]['order_id'],
-                            "cart_id" => $order[0]['cart_id'],
-                            "order_status" => $order[0]['order_status'],
-                            "item" => [
-                                "product_name" => $order[0]['product_name'],
-                                "price" => $order[0]['price'],
-                                "quantity" => $order[0]['quantity'],
-                            ],
-                            "total_amount" => $order[0]['total_amount'],
-                            "order_date" => $order[0]['order_date'],   
-                            "payment" => [
-                                "type" => $order[0]['payment_method'],
-                                "payment_date" => $order[0]['payment_date']
-                            ] 
-                        ],
-                        "Message" => "You're order has been Cancelled.",
-                    );
-                    echo json_encode($result, JSON_PRETTY_PRINT);
-                }else{
-                    http_response_code(500);
+                $getOrderDetails = $this->db->prepare('SELECT * FROM orders as o, payment as pt, shipping_address as sa WHERE pt.order_id = :order_id AND sa.user_id = :user_id AND o.user_id = :user_id AND o.order_id = :order_id');
+                $getOrderDetails->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+                $getOrderDetails->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+                if($getOrderDetails->execute()){
+                    $result = $getOrderDetails->fetchAll(PDO::FETCH_ASSOC);
+                    if(count($result) !=0){
+    
+                        $getItems = $this->db->prepare('SELECT p.product_name, p.price, c.quantity, c.status FROM products as p , cart as c WHERE c.status = "Selected" AND c.product_id = p.product_id AND c.user_id = :user_id');
+                        $getItems->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+    
+                        if($getItems->execute()){
+                            $item = $getItems->fetchAll(PDO::FETCH_ASSOC);
+                            
+                            $review = array(
+                                "order_details" => $result,
+                                "items" => $item,
+                                "Message"=> "You're order has been Cancelled."
+                            );       
+    
+                            echo json_encode($review , JSON_PRETTY_PRINT);
+    
+                        }
+                    }
                 }
+
 
             }
 
