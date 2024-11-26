@@ -77,7 +77,9 @@ CREATE TABLE IF NOT EXISTS cart (
     quantity INT NOT NULL CHECK (quantity > 0),
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'Pending', -- Fixed statuses
+    CHECK ( status IN ('Selected', 'Checkout', 'Pending'))
 );
 
 -- Create shipping_address table
@@ -97,13 +99,11 @@ CREATE TABLE IF NOT EXISTS orders (
     order_id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id CHAR(36),
     order_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    cart_id CHAR(36),
     address_id CHAR(36), 
     total_amount DECIMAL(10, 2) NOT NULL,
     order_status VARCHAR(20) NOT NULL DEFAULT 'Pending', -- Fixed order statuses
     CHECK (order_status IN ('Pending', 'Processing', 'Shipped', 'Completed')),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (cart_id) REFERENCES cart(cart_id) ON DELETE CASCADE,
     FOREIGN KEY (address_id) REFERENCES shipping_address(address_id) ON DELETE SET NULL
 );
 
@@ -117,6 +117,18 @@ CREATE TABLE IF NOT EXISTS payment (
     encrypted_payment_details BLOB, -- Store encrypted payment information
     FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
 );
+
+-- Create checkout table 
+
+CREATE TABLE IF NOT EXISTS checkout (
+    order_id CHAR(36),
+    cart_id CHAR(36),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
+    FOREIGN KEY (cart_id) REFERENCES cart(cart_id) ON DELETE CASCADE
+);
+
+
+
 
 -- Insert dummy data into roles
 INSERT INTO roles (role_name) VALUES 
@@ -199,7 +211,7 @@ INSERT INTO shipping_address (user_id, street_address, city, state, postal_code,
 ((SELECT user_id FROM users WHERE email = 'hank.moore@example.com'), '707 Walnut St', 'Anytown', 'Anystate', '12345', 'USA');
 
 -- Insert dummy data into orders
-INSERT INTO orders (user_id, cart_id, total_amount, address_id) VALUES
+/* INSERT INTO orders (user_id, cart_id, total_amount, address_id) VALUES
 ((SELECT user_id FROM users WHERE email = 'john.doe@example.com'), (SELECT cart_id FROM cart WHERE user_id = (SELECT user_id FROM users WHERE email = 'john.doe@example.com')), 59.98, (SELECT address_id FROM shipping_address WHERE user_id = (SELECT user_id FROM users WHERE email = 'john.doe@example.com'))),
 ((SELECT user_id FROM users WHERE email = 'jane.smith@example.com'), (SELECT cart_id FROM cart WHERE user_id = (SELECT user_id FROM users WHERE email = 'jane.smith@example.com')), 99.99, (SELECT address_id FROM shipping_address WHERE user_id = (SELECT user_id FROM users WHERE email = 'jane.smith@example.com'))),
 ((SELECT user_id FROM users WHERE email = 'alice.johnson@example.com'), (SELECT cart_id FROM cart WHERE user_id = (SELECT user_id FROM users WHERE email = 'alice.johnson@example.com')), 149.97, (SELECT address_id FROM shipping_address WHERE user_id = (SELECT user_id FROM users WHERE email = 'alice.johnson@example.com'))),
@@ -209,7 +221,7 @@ INSERT INTO orders (user_id, cart_id, total_amount, address_id) VALUES
 ((SELECT user_id FROM users WHERE email = 'eve.taylor@example.com'), (SELECT cart_id FROM cart WHERE user_id = (SELECT user_id FROM users WHERE email = 'eve.taylor@example.com')), 103.96, (SELECT address_id FROM shipping_address WHERE user_id = (SELECT user_id FROM users WHERE email = 'eve.taylor@example.com'))),
 ((SELECT user_id FROM users WHERE email = 'frank.anderson@example.com'), (SELECT cart_id FROM cart WHERE user_id = (SELECT user_id FROM users WHERE email = 'frank.anderson@example.com')), 59.99, (SELECT address_id FROM shipping_address WHERE user_id = (SELECT user_id FROM users WHERE email = 'frank.anderson@example.com'))),
 ((SELECT user_id FROM users WHERE email = 'grace.thomas@example.com'), (SELECT cart_id FROM cart WHERE user_id = (SELECT user_id FROM users WHERE email = 'grace.thomas@example.com')), 44.97, (SELECT address_id FROM shipping_address WHERE user_id = (SELECT user_id FROM users WHERE email = 'grace.thomas@example.com'))),
-((SELECT user_id FROM users WHERE email = 'hank.moore@example.com'), (SELECT cart_id FROM cart WHERE user_id = (SELECT user_id FROM users WHERE email = 'hank.moore@example.com')), 12.99, (SELECT address_id FROM shipping_address WHERE user_id = (SELECT user_id FROM users WHERE email = 'hank.moore@example.com')));
+((SELECT user_id FROM users WHERE email = 'hank.moore@example.com'), (SELECT cart_id FROM cart WHERE user_id = (SELECT user_id FROM users WHERE email = 'hank.moore@example.com')), 12.99, (SELECT address_id FROM shipping_address WHERE user_id = (SELECT user_id FROM users WHERE email = 'hank.moore@example.com'))); */
 
 -- Insert dummy data into payment
 INSERT INTO payment (order_id, payment_method, encrypted_payment_details) VALUES
