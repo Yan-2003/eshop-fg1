@@ -28,20 +28,19 @@ class Checkout{
             $total_amount = 0;
             $items = [];
             foreach($checkout as $item){
-                $stm = $this->db->prepare('SELECT * FROM cart, products, shipping_address WHERE cart.status = "Pending" AND shipping_address.user_id = :user_id AND cart.product_id = products.product_id AND cart.product_id = :product_id AND cart.user_id = :user_id');
+                $stm = $this->db->prepare('SELECT * FROM cart, products, shipping_address WHERE cart.is_selected_for_checkout = 0 AND shipping_address.user_id = :user_id AND cart.product_id = products.product_id AND cart.product_id = :product_id AND cart.user_id = :user_id');
                 $stm->bindParam(":product_id", $item['product_id'], PDO::PARAM_STR_CHAR);
                 $stm->bindParam(":user_id", $user_id, PDO::PARAM_STR_CHAR);
                 $stm->execute();
                 $result = $stm->fetchAll(PDO::FETCH_ASSOC);
 
                 if(count($result) != 0){
-                    $set_product_to_seleced = $this->db->prepare('UPDATE cart SET status="Selected" WHERE cart_id = :cart_id');
+                    $set_product_to_seleced = $this->db->prepare('UPDATE cart SET is_selected_for_checkout=1 WHERE cart_id = :cart_id');
                     $set_product_to_seleced->bindParam(':cart_id', $result[0]['cart_id'], PDO::PARAM_STR_CHAR);
                     $set_product_to_seleced->execute();
 
                     $total_amount += $result[0]['price'] * $result[0]['quantity']; 
                     $this->address_id = $result[0]['address_id']; 
-
                     $item = array(
                         "product_id" => $result[0]['product_id'],
                         "product_name" => $result[0]['product_name'],
@@ -75,17 +74,29 @@ class Checkout{
                     $getOrder = $order->fetchAll(PDO::FETCH_ASSOC);
 
 
-                    $order_summary = array(
-                        "order_summary" => [
-                            "order_details" => $getOrder,
-                            "items" => $items,
-                        ],
-                        "payment_method" => [
-                            "PayPal",
-                            "Credit Card"
-                        ]
-                    );
+                    foreach($items as $item){
 
+                        $insert_to_checkout = $this->db->prepare('INSERT INTO checkout(order_id, product_id, quantity) VALUES(:order_id, :product_id, :quantity)');
+                        $insert_to_checkout->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+                        $insert_to_checkout->bindParam(':product_id', $item['product_id'], PDO::PARAM_STR_CHAR);
+                        $insert_to_checkout->bindParam(':quantity', $item['quantity']);
+                        if($insert_to_checkout->execute()){
+                            $order_summary = array(
+                                "order_summary" => [
+                                    "order_details" => $getOrder,
+                                    "items" => $items,
+                                ],
+                                "payment_method" => [
+                                    "PayPal",
+                                    "Credit Card"
+                                ]
+                            );  
+                        }else{
+                            http_response_code(500);
+                            return;
+                        }
+
+                    }
                     echo json_encode($order_summary, JSON_PRETTY_PRINT);
                 }
             }
@@ -170,9 +181,9 @@ class Checkout{
                 $result = $getOrderDetails->fetchAll(PDO::FETCH_ASSOC);
                 if(count($result) !=0){
 
-                    $getItems = $this->db->prepare('SELECT p.product_name, p.price, c.quantity, c.status FROM products as p , cart as c WHERE c.status = "Selected" AND c.product_id = p.product_id AND c.user_id = :user_id');
+                    $getItems = $this->db->prepare('SELECT p.product_name, p.price, c.quantity FROM products as p , checkout as c, orders as o WHERE c.order_id = :order_id AND c.product_id = p.product_id AND o.order_id = c.order_id AND o.user_id = :user_id');
                     $getItems->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-
+                    $getItems->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
                     if($getItems->execute()){
                         $item = $getItems->fetchAll(PDO::FETCH_ASSOC);
                         
@@ -202,67 +213,78 @@ class Checkout{
 
     }
 
+ public function confirmOrder($order_id){
 
-    public function confirmOrder(){
+    $auth = new auth();
 
-        $auth = new auth();
+    if($auth->check()) {  
+        $user_id = $_SESSION['user_id'];
 
-        if($auth->check()) {  
-            $user_id = $_SESSION['user_id'];
-            $data = json_decode(file_get_contents("php://input"), true);
-            $order_id = $data['order_id'] ?? null;
+        $stm = $this->db->prepare('UPDATE orders SET order_status="Processing" WHERE order_id = :order_id AND user_id = :user_id ');
+        $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR);
+        $stm->bindParam(':order_id', $order_id, PDO::PARAM_STR);
 
-            $stm = $this->db->prepare('UPDATE orders SET order_status="Processing" WHERE order_id = :order_id AND user_id = :user_id ');
-            $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR);
-            $stm->bindParam(':order_id', $order_id, PDO::PARAM_STR);
-
-            if($stm->execute()){
+        if($stm->execute()){
 
 
-                $getOrderDetails = $this->db->prepare('SELECT * FROM orders as o, payment as pt, shipping_address as sa WHERE pt.order_id = :order_id AND sa.user_id = :user_id AND o.user_id = :user_id AND o.order_id = :order_id');
-                $getOrderDetails->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
-                $getOrderDetails->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-                if($getOrderDetails->execute()){
-                    $result = $getOrderDetails->fetchAll(PDO::FETCH_ASSOC);
-                    if(count($result) !=0){
+            $getOrderDetails = $this->db->prepare('SELECT * FROM orders as o, payment as pt, shipping_address as sa WHERE pt.order_id = :order_id AND sa.user_id = :user_id AND o.user_id = :user_id AND o.order_id = :order_id');
+            $getOrderDetails->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+            $getOrderDetails->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+            if($getOrderDetails->execute()){
+                $result = $getOrderDetails->fetchAll(PDO::FETCH_ASSOC);
+                if(count($result) !=0){
     
-                        $getItems = $this->db->prepare('SELECT p.product_name, p.price, c.quantity, c.status FROM products as p , cart as c WHERE c.status = "Selected" AND c.product_id = p.product_id AND c.user_id = :user_id');
-                        $getItems->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
-    
-                        if($getItems->execute()){
-                            $item = $getItems->fetchAll(PDO::FETCH_ASSOC);
-                            
-                            $review = array(
-                                "order_details" => $result,
-                                "items" => $item,
-                                "Message"=> "You're order has been Processed."
-                            );       
-    
-                            echo json_encode($review , JSON_PRETTY_PRINT);
-    
+                    $getItems = $this->db->prepare('SELECT p.product_id, p.product_name, p.price, c.quantity FROM products as p , checkout as c, orders as o WHERE c.order_id = :order_id AND c.product_id = p.product_id AND o.order_id = c.order_id AND o.user_id = :user_id');
+                    $getItems->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+                    $getItems->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+                    if($getItems->execute()){
+                        $items = $getItems->fetchAll(PDO::FETCH_ASSOC);
+
+                        
+                        foreach($items as $item){
+                            $delete_selected_items_to_cart = $this->db->prepare('DELETE FROM cart WHERE is_selected_for_checkout=1 AND user_id = :user_id AND product_id = :product_id');
+                            $delete_selected_items_to_cart->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+                            $delete_selected_items_to_cart->bindParam(':product_id', $item['product_id'], PDO::PARAM_STR_CHAR);
+                            $delete_selected_items_to_cart->execute();
                         }
+
+                        $review = array(
+                            "order_details" => $result,
+                            "items" => $items,
+                            "Message"=> "You're order has been Processed."
+                        );       
+    
+    
+                        echo json_encode($review , JSON_PRETTY_PRINT);
+    
                     }
+    
+    
+    
+                }else{
+                    echo json_encode(["message" => "No data found."], JSON_PRETTY_PRINT);
+                    return ;
                 }
-
             }
-
-        }else{
-            http_response_code(401);
         }
 
+
+
+    }else{
+        http_response_code(401);
     }
 
+}
 
-    public function cancelOrder(){
+    public function cancelOrder($order_id){
 
         $auth = new auth();
 
         if($auth->check()) {  
             $user_id = $_SESSION['user_id'];
-            $data = json_decode(file_get_contents("php://input"), true);
-            $order_id = $data['order_id'] ?? null;
+            
 
-            $stm = $this->db->prepare('UPDATE orders SET order_status="Pending" WHERE order_id = :order_id AND user_id = :user_id ');
+            $stm = $this->db->prepare('UPDATE orders SET order_status="Cancelled" WHERE order_id = :order_id AND user_id = :user_id ');
             $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR);
             $stm->bindParam(':order_id', $order_id, PDO::PARAM_STR);
 
@@ -275,8 +297,9 @@ class Checkout{
                     $result = $getOrderDetails->fetchAll(PDO::FETCH_ASSOC);
                     if(count($result) !=0){
     
-                        $getItems = $this->db->prepare('SELECT p.product_name, p.price, c.quantity, c.status FROM products as p , cart as c WHERE c.status = "Selected" AND c.product_id = p.product_id AND c.user_id = :user_id');
+                        $getItems = $this->db->prepare('SELECT p.product_name, p.price, c.quantity FROM products as p , checkout as c, orders as o WHERE o.order_id = c.order_id AND c.product_id = p.product_id AND o.user_id = :user_id AND c.order_id = :order_id');
                         $getItems->bindParam(':user_id', $user_id, PDO::PARAM_STR_CHAR);
+                        $getItems->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
     
                         if($getItems->execute()){
                             $item = $getItems->fetchAll(PDO::FETCH_ASSOC);
@@ -290,6 +313,9 @@ class Checkout{
                             echo json_encode($review , JSON_PRETTY_PRINT);
     
                         }
+                    }else{
+                        echo json_encode(["message" => "No data found."], JSON_PRETTY_PRINT);
+                        return ;
                     }
                 }
 

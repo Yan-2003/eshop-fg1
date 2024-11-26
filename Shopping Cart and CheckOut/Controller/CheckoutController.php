@@ -52,14 +52,19 @@ class CheckoutController{
 
 
         $checkout = new Checkout();
-        return $checkout->confirmOrder();
+        $data = json_decode(file_get_contents("php://input"), true);
+        $order_id = $data['order_id'] ?? null;
+
+        return $checkout->confirmOrder($order_id);
         
     }
 
     public function cancel_order(){
+        $data = json_decode(file_get_contents("php://input"), true);
+        $order_id = $data['order_id'] ?? null;
         
         $checkout = new Checkout();
-        return $checkout->cancelOrder();
+        return $checkout->cancelOrder($order_id);
     }
 
 
