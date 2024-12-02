@@ -12,6 +12,10 @@
 ```bash
    composer require vlucas/phpdotenv
 ```
+3. Install the DotEnv using composer
+```bash
+   composer require ramsey/uuid
+```
 
 <br>
 3. Add .ENV file to the Directory of : 
