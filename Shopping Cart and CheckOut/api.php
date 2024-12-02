@@ -28,3 +28,5 @@ Router::add('/api/checkout/review/{order_id}', 'CheckoutController', 'review', '
 Router::add('/api/checkout/confirm', 'CheckoutController', 'confirm_order', 'POST');
 Router::add('/api/checkout/cancel', 'CheckoutController', 'cancel_order', 'POST');
 Router::add('/api/checkout/{order_id}/status', 'CheckoutController', 'track_order', 'GET');
+Router::add('/api/checkout/ship_order', 'CheckoutController', 'ship_order', 'POST');
+Router::add('/api/checkout/complete_order', 'CheckoutController', 'complete_order', 'POST');

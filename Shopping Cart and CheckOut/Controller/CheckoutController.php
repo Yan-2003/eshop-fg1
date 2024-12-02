@@ -75,5 +75,21 @@ class CheckoutController{
         return $checkout->track($order_id);
     }
 
+    public function ship_order(){
+        $data = json_decode(file_get_contents("php://input"), true);
+        $order_id = $data['order_id'] ?? null;
+        
+        $checkout = new Checkout();
+        return $checkout->toShipped($order_id);
+    }
+
+    public function complete_order(){
+        $data = json_decode(file_get_contents("php://input"), true);
+        $order_id = $data['order_id'] ?? null;
+        
+        $checkout = new Checkout();
+        return $checkout->completed($order_id);
+    }
+
 
 }

@@ -151,7 +151,7 @@ class Checkout{
 
             if($stm->execute()){
                 $result = array(
-                    "Message" => "Payment Added Successfully"
+                    "message" => "Payment Added Successfully"
                 );
 
                 echo json_encode($result, JSON_PRETTY_PRINT);
@@ -251,7 +251,7 @@ class Checkout{
                         $review = array(
                             "order_details" => $result,
                             "items" => $items,
-                            "Message"=> "You're order has been Processed."
+                            "Message"=> "Your order has been Processed."
                         );       
     
     
@@ -282,6 +282,20 @@ class Checkout{
 
         if($auth->check()) {  
             $user_id = $_SESSION['user_id'];
+
+
+            $get_order = $this->db->prepare('SELECT * FROM orders WHERE order_id = :order_id AND user_id = :user_id ');
+            $get_order->bindParam(':user_id', $user_id, PDO::PARAM_STR);
+            $get_order->bindParam(':order_id', $order_id, PDO::PARAM_STR);
+
+            if($get_order->execute()){
+                $result = $get_order->fetchAll(PDO::FETCH_ASSOC);
+
+                if($$result[0]['order_status'] == 'Shipped'){
+                    return json_encode(["message" => "Unable to cancel, order has already shipped."], JSON_PRETTY_PRINT);
+                }
+            }
+
             
 
             $stm = $this->db->prepare('UPDATE orders SET order_status="Cancelled" WHERE order_id = :order_id AND user_id = :user_id ');
@@ -307,7 +321,7 @@ class Checkout{
                             $review = array(
                                 "order_details" => $result,
                                 "items" => $item,
-                                "Message"=> "You're order has been Cancelled."
+                                "message"=> "Your order has been Cancelled."
                             );       
     
                             echo json_encode($review , JSON_PRETTY_PRINT);
@@ -367,5 +381,98 @@ class Checkout{
             http_response_code(401);
         }
     }
+
+
+    public function toShipped($order_id){
+
+
+        $auth = new auth();
+
+        if($auth->check()){ 
+
+            $user_id = $_SESSION['user_id'];
+
+            $get_order = $this->db->prepare('SELECT * FROM orders WHERE order_id = :order_id AND user_id = :user_id ');
+            $get_order->bindParam(':user_id', $user_id, PDO::PARAM_STR);
+            $get_order->bindParam(':order_id', $order_id, PDO::PARAM_STR);
+
+            if($get_order->execute()){
+                $result = $get_order->fetchAll(PDO::FETCH_ASSOC);
+
+                if(count($result) == 0){
+                    echo json_encode(["message" => "No order found."], JSON_PRETTY_PRINT);
+                    return ;
+                }
+
+                if($result[0]['order_status'] != 'Processing'){
+                    echo json_encode(["message" => "Please confirm your order first."], JSON_PRETTY_PRINT);
+                    return;
+                }
+            }
+
+            $stm = $this->db->prepare('UPDATE orders SET order_status="Shipped" WHERE order_id = :order_id AND user_id = :user_id ');
+            $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR);
+            $stm->bindParam(':order_id', $order_id, PDO::PARAM_STR);
+
+            if($stm->execute()){
+                echo json_encode(["message" => "Order has been shipped"], JSON_PRETTY_PRINT);
+                return;
+            }else{
+                echo json_encode(["message"=> "Their was a problem"] , JSON_PRETTY_PRINT);
+                return;
+            }
+
+        }else{
+            http_response_code(403);
+        }
+
+    }
+
+    public function completed($order_id){
+
+
+        $auth = new auth();
+
+        if($auth->check()){ 
+
+            $user_id = $_SESSION['user_id'];
+
+            $get_order = $this->db->prepare('SELECT * FROM orders WHERE order_id = :order_id AND user_id = :user_id ');
+            $get_order->bindParam(':user_id', $user_id, PDO::PARAM_STR);
+            $get_order->bindParam(':order_id', $order_id, PDO::PARAM_STR);
+
+            if($get_order->execute()){
+                $result = $get_order->fetchAll(PDO::FETCH_ASSOC);
+
+                if(count($result) == 0){
+                    echo json_encode(["message" => "No order found."], JSON_PRETTY_PRINT);
+                    return ;
+                }
+
+                if($result[0]['order_status'] != 'Shipped'){
+                    return json_encode(["message" => "Your order has not shipped yet."], JSON_PRETTY_PRINT);
+                }
+            }
+
+            $stm = $this->db->prepare('UPDATE orders SET order_status="Completed" WHERE order_id = :order_id AND user_id = :user_id ');
+            $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR);
+            $stm->bindParam(':order_id', $order_id, PDO::PARAM_STR);
+
+            if($stm->execute()){
+                echo json_encode(["message" => "Order has been Completed"], JSON_PRETTY_PRINT);
+                return; 
+            }else{
+                echo json_encode(["message"=> "Their was a problem"] , JSON_PRETTY_PRINT);
+                return; 
+            }
+
+        }else{
+            http_response_code(403);
+        }
+
+    }
+
+    
       
 }
+
