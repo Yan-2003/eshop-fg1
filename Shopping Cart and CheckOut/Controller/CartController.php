@@ -59,7 +59,6 @@ class CartController
         } else {
             // If user is not authorized, return a 401 Unauthorized response
             http_response_code(401);
-            echo json_encode(['message' => 'Unauthorized user'], JSON_PRETTY_PRINT);
         }
     }
 
@@ -95,7 +94,6 @@ class CartController
         } else {
             // If user is not authorized, return a 401 Unauthorized response
             http_response_code(401);
-            echo json_encode(['message' => 'Unauthorized user'], JSON_PRETTY_PRINT);
         }
     }
 
@@ -126,7 +124,6 @@ class CartController
         } else {
             // If user is not authorized, return a 401 Unauthorized response
             http_response_code(401);
-            echo json_encode(['message' => 'Unauthorized user'], JSON_PRETTY_PRINT);
         }
     }
 
@@ -150,7 +147,6 @@ class CartController
         } else {
             // If user is not authorized, return a 401 Unauthorized response
             http_response_code(401);
-            echo json_encode(['message' => 'Unauthorized user'], JSON_PRETTY_PRINT);
         }
     }
 }

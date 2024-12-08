@@ -5,7 +5,7 @@ namespace Middleware;
 use Database\DB;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use FFI\Exception;
+use Firebase\JWT\SignatureInvalidException;
 
 class auth{
     private $token;
@@ -26,6 +26,12 @@ class auth{
        
                     $decoded = JWT::decode($this->token, new Key($key, 'HS256'));
 
+                    if(!$decoded){
+                        http_response_code(403);
+                        echo json_encode(["message" => "Token expired."], JSON_PRETTY_PRINT);
+                        return;
+                    }
+
                     $this->user_id = $decoded->user_id;
                     $DB->conn();
 
@@ -41,9 +47,9 @@ class auth{
                         echo json_encode(array("message"=>"Unauthorized user."), JSON_PRETTY_PRINT);
                         return false;
                     }
-                } catch (Exception $e) {
+                } catch (SignatureInvalidException $e) {
                     http_response_code(401);
-                    echo "Token decoding failed: " . $e->getMessage();
+                    echo json_encode(["message" => "Token Expired: " . $e->getMessage()], JSON_PRETTY_PRINT);
                     return false;
                 }
 

@@ -28,13 +28,20 @@ class Checkout{
             $total_amount = 0;
             $items = [];
             foreach($checkout as $item){
-                $stm = $this->db->prepare('SELECT * FROM cart, products, shipping_address WHERE cart.is_selected_for_checkout = 0 AND shipping_address.user_id = :user_id AND cart.product_id = products.product_id AND cart.product_id = :product_id AND cart.user_id = :user_id');
+                $stm = $this->db->prepare('SELECT * FROM cart, products, shipping_address WHERE shipping_address.user_id = :user_id AND cart.product_id = products.product_id AND cart.product_id = :product_id AND cart.user_id = :user_id');
                 $stm->bindParam(":product_id", $item['product_id'], PDO::PARAM_STR_CHAR);
                 $stm->bindParam(":user_id", $user_id, PDO::PARAM_STR_CHAR);
                 $stm->execute();
                 $result = $stm->fetchAll(PDO::FETCH_ASSOC);
 
                 if(count($result) != 0){
+
+
+                    if((int)$result[0]['is_selected_for_checkout'] === 1){
+                        echo json_encode(["message" => "Item already Checkout."], JSON_PRETTY_PRINT);
+                        return;
+                    }
+
                     $set_product_to_seleced = $this->db->prepare('UPDATE cart SET is_selected_for_checkout=1 WHERE cart_id = :cart_id');
                     $set_product_to_seleced->bindParam(':cart_id', $result[0]['cart_id'], PDO::PARAM_STR_CHAR);
                     $set_product_to_seleced->execute();
@@ -220,6 +227,16 @@ class Checkout{
     if($auth->check()) {  
         $user_id = $_SESSION['user_id'];
 
+        $checkforPayment = $this->db->prepare('SELECT * FROM payment WHERE order_id = :order_id');
+        $checkforPayment->bindParam(':order_id', $order_id, PDO::PARAM_STR_CHAR);
+        $checkforPayment->execute();
+
+        $checkpayment = $checkforPayment->fetchAll(PDO::FETCH_ASSOC);
+        if(count($checkpayment) == 0){
+            echo json_encode(["message" => "No payment found. please select a payment first."], JSON_PRETTY_PRINT);
+            return;
+        }
+
         $stm = $this->db->prepare('UPDATE orders SET order_status="Processing" WHERE order_id = :order_id AND user_id = :user_id ');
         $stm->bindParam(':user_id', $user_id, PDO::PARAM_STR);
         $stm->bindParam(':order_id', $order_id, PDO::PARAM_STR);
@@ -291,7 +308,12 @@ class Checkout{
             if($get_order->execute()){
                 $result = $get_order->fetchAll(PDO::FETCH_ASSOC);
 
-                if($$result[0]['order_status'] == 'Shipped'){
+                if(count($result) == 0){
+                    echo json_encode(["message" => "No data found."], JSON_PRETTY_PRINT);
+                    return ;
+                }
+
+                if($result[0]['order_status'] == 'Shipped'){
                     return json_encode(["message" => "Unable to cancel, order has already shipped."], JSON_PRETTY_PRINT);
                 }
             }
@@ -392,6 +414,7 @@ class Checkout{
 
             $user_id = $_SESSION['user_id'];
 
+        
             $get_order = $this->db->prepare('SELECT * FROM orders WHERE order_id = :order_id AND user_id = :user_id ');
             $get_order->bindParam(':user_id', $user_id, PDO::PARAM_STR);
             $get_order->bindParam(':order_id', $order_id, PDO::PARAM_STR);
@@ -402,6 +425,11 @@ class Checkout{
                 if(count($result) == 0){
                     echo json_encode(["message" => "No order found."], JSON_PRETTY_PRINT);
                     return ;
+                }
+
+                if($result[0]['order_status'] == 'Shipped'){
+                    echo json_encode(["message" => "Your order is already shipped."], JSON_PRETTY_PRINT);
+                    return;
                 }
 
                 if($result[0]['order_status'] != 'Processing'){
