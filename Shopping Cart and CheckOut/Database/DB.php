@@ -46,7 +46,8 @@ class DB
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             return $this->conn;
         } catch (PDOException $e) {
-            echo "Connection failed: " . $e->getMessage();
+            http_response_code(500);
+            echo json_encode(["message" => "unable to connect to the database please try again later.", "reason" => "Connection failed: " . $e->getMessage()], JSON_PRETTY_PRINT);
         }
     }
 
